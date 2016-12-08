@@ -1,0 +1,30 @@
+:local PingCount 3;
+:local CheckIp 8.8.8.8;
+
+:local rName [/system identity get name];
+:local rDate [/system clock get date];
+:local rTime [/system clock get time];
+:local eSubj ($rName . " " . $rDate . " " . $rTime);
+
+:local isp1 [/ping $CheckIp routing-table=main  count=$PingCount];
+:local isp2 [/ping $CheckIp routing-table=2 count=$PingCount];
+
+:local MainGw [/ip route get [find comment="1"] disable];
+:local BackGw [/ip route get [find comment="2"] disable];
+
+
+#if main ISP is DOWN and backup ISP is UP then:
+:if (($isp1=0) && ($BackGw=true)) do={
+:log warning "Set routes to backup ISP";
+/ip route disable [find comment="1"];
+/ip route enable [find comment="2"];
+/quit;
+}
+
+
+#if main ISP is UP then:
+:if ((($isp2=0) && ($MainGw=true)) || (($isp1=$PingCount) && ($MainGw=true)))  do={
+:log warning "Set routes to main ISP";
+/ip route enable [find comment="1"];
+/ip route disable [find comment="2"];
+}
